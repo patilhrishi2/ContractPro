@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Procurement DApp</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
+    h1 { color: #333; }
+    h2 { color: #555; margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+    button { background: #4CAF50; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin: 4px; }
+    button:hover { background: #45a049; }
+    button.blue   { background: #1e88e5; } button.blue:hover   { background: #1565c0; }
+    button.orange { background: #fb8c00; } button.orange:hover { background: #e65100; }
+    button.purple { background: #8e24aa; } button.purple:hover { background: #6a1b9a; }
+    button.teal   { background: #00897b; } button.teal:hover   { background: #00695c; }
+    button.indigo { background: #3949ab; } button.indigo:hover { background: #283593; }
+    button.red    { background: #e53935; } button.red:hover    { background: #c62828; }
+    button.pink   { background: #d81b60; } button.pink:hover   { background: #ad1457; }
+    button.gray   { background: #757575; } button.gray:hover   { background: #424242; }
+    input, textarea { padding: 8px; margin: 4px; border: 1px solid #ccc; border-radius: 4px; width: 250px; }
+    textarea { width: 340px; height: 60px; resize: vertical; }
+    .card { background: white; padding: 16px; border-radius: 8px; margin: 10px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .info { background: #e3f2fd; padding: 10px; border-radius: 4px; margin: 8px 0; font-size: 14px; word-break: break-all; }
+    .info.authority  { background: #e8f5e9; }
+    .info.contractor { background: #fce4ec; }
+    .info.completed  { background: #e0f2f1; border-left: 4px solid #00897b; }
+    .role-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: bold; margin-top: 4px; }
+    .role-authority  { background: #e8f5e9; color: #2e7d32; }
+    .role-inspector  { background: #fff3e0; color: #e65100; }
+    .role-contractor { background: #fce4ec; color: #c62828; }
+    .role-regulator  { background: #e8eaf6; color: #283593; }
+    .project-btn { background: #eee; border: 1px solid #ccc; color: #333; padding: 8px 14px; border-radius: 4px; cursor: pointer; margin: 4px; }
+    .project-btn.active { background: #1e88e5; color: white; border-color: #1e88e5; }
+    .status-Pending   { color: #f57c00; font-weight: bold; }
+    .status-Complete  { color: #8e24aa; font-weight: bold; }
+    .status-InReview  { color: #1e88e5; font-weight: bold; }
+    .status-Approved  { color: #43a047; font-weight: bold; }
+    .status-Paid      { color: #2e7d32; font-weight: bold; }
+    .status-Rejected  { color: #e53935; font-weight: bold; }
+    .status-Deleted   { color: #aaa; font-weight: bold; text-decoration: line-through; }
+    .hash-display { font-size: 11px; color: #555; word-break: break-all; background: #f5f5f5; padding: 6px; border-radius: 4px; margin-top: 6px; }
+    .evidence-box { background: #fff8e1; border-left: 4px solid #fb8c00; padding: 10px; border-radius: 4px; font-size: 13px; margin-top: 6px; }
+    .rejection-box { background: #fce4ec; border-left: 4px solid #e53935; padding: 10px; border-radius: 4px; font-size: 13px; margin-top: 6px; }
+    .notice { background: #fff8e1; border-left: 4px solid #fbc02d; padding: 10px; border-radius: 4px; font-size: 13px; margin: 8px 0; }
+    .sig-status { font-size: 12px; padding: 4px 8px; border-radius: 4px; display: inline-block; margin: 2px; }
+    .sig-done    { background: #e8f5e9; color: #2e7d32; }
+    .sig-pending { background: #fff3e0; color: #e65100; }
+    .sig-rejected{ background: #fce4ec; color: #c62828; }
+    #log { background: #263238; color: #aef; padding: 12px; border-radius: 4px; font-size: 13px; min-height: 60px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+
+  <h1>🏗️ Procurement DApp</h1>
+
+  <div class="card">
+    <h2>Wallet</h2>
+    <button onclick="connectWallet()">Connect MetaMask</button>
+    <div class="info">Connected: <span id="walletAddress">Not connected</span></div>
+    <div id="roleBadgeWrap"></div>
+  </div>
+
+  <div class="card">
+    <h2>Factory Contract</h2>
+    <div class="info">Factory Address: <span>0xf7fbb361E52F68977D58fdeF755Bb44a30F364DE</span></div>
+    <div class="info authority">Authority: <span>0xF9551B6197481c22b443101D90761504e332ACa4</span></div>
+  </div>
+
+  <!-- Authority: create project -->
+  <div id="createProjectSection" style="display:none">
+    <div class="card">
+      <h2>Create New Project <small style="color:#888">(authority only)</small></h2>
+      <div class="notice">Budget is locked immediately when project is created.</div>
+      <input type="text" id="projectName" placeholder="Project name (e.g. Road Construction)" /><br/>
+      <input type="text" id="projectContractor" placeholder="Contractor address (0x...)" style="width:340px" /><br/>
+      <input type="number" id="projectBudget" placeholder="Initial budget in ETH (e.g. 5)" step="0.01" /><br/>
+      <button class="purple" onclick="createProject()">🚀 Create Project & Lock Budget</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Projects</h2>
+    <button class="blue" onclick="loadProjects()">🔄 Load All Projects</button>
+    <div id="projectList" style="margin-top:10px">Click "Load All Projects".</div>
+  </div>
+
+  <div id="activeProjectPanel" style="display:none">
+
+    <div class="card" style="border: 2px solid #1e88e5;">
+      <h2>📁 Active Project: <span id="activeProjectName">-</span></h2>
+      <div class="info">Contract Address: <span id="activeProjectAddress">-</span></div>
+      <div class="info">Contract Balance: <span id="contractBalance">-</span> ETH</div>
+      <div class="info authority">Authority: <span id="activeAuthority">-</span></div>
+      <div class="info contractor">Contractor: <span id="activeContractor">-</span></div>
+      <div id="projectCompletedBanner" style="display:none" class="info completed">
+        🎉 <strong>Project Completed!</strong> This project has been marked complete by the authority.
+      </div>
+      <div id="contractorCompletionPending" style="display:none" class="notice">
+        ⏳ Contractor has marked project complete — awaiting authority final approval.
+      </div>
+      <div style="margin-top:10px">
+        <div style="font-size:13px;font-weight:bold;margin-bottom:6px;">📊 Budget Allocation</div>
+        <div style="display:flex;gap:8px;font-size:13px;margin-bottom:6px;">
+          <span>Total: <strong id="budgetTotal">-</strong> ETH</span>
+          <span>|</span>
+          <span style="color:#e53935">Spent: <strong id="budgetSpent">-</strong> ETH</span>
+          <span>|</span>
+          <span style="color:#43a047">Remaining: <strong id="budgetRemaining">-</strong> ETH</span>
+        </div>
+        <div style="background:#eee;border-radius:8px;height:16px;overflow:hidden;">
+          <div id="budgetBar" style="height:100%;width:0%;background:#e53935;border-radius:8px;transition:width 0.5s;"></div>
+        </div>
+        <div id="budgetBarLabel" style="font-size:11px;color:#888;margin-top:3px;">No funds locked yet.</div>
+      </div>
+      <button class="blue" onclick="refreshActive()" style="margin-top:10px">🔄 Refresh</button>
+    </div>
+
+    <!-- AUTHORITY actions -->
+    <div id="authorityActions" style="display:none">
+      <div class="card">
+        <h2>Fund Requests <small style="color:#888">(from contractor)</small></h2>
+        <button class="blue" onclick="loadFundRequests()">🔄 Load Fund Requests</button>
+        <div id="fundRequestList" style="margin-top:10px">Click to load.</div>
+      </div>
+      <div class="card">
+        <h2>Replace Contractor <small style="color:#888">(after milestone rejection)</small></h2>
+        <p style="font-size:13px;color:#555;">Use only if contractor cannot fix rejected work.</p>
+        <input type="text" id="newContractorAddr" placeholder="New contractor address (0x...)" style="width:340px" /><br/>
+        <button class="red" onclick="replaceContractor()">🔄 Replace Contractor</button>
+      </div>
+    </div>
+
+    <!-- CONTRACTOR actions -->
+    <div id="contractorActions" style="display:none">
+      <div class="card" style="border-left: 4px solid #c62828;">
+        <h2>🔨 Contractor Panel</h2>
+        <div class="notice" style="background:#fce4ec;border-color:#c62828;">
+          Add milestones, mark them complete with invoice, log materials, and raise fund requests.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Add Milestone <small style="color:#888">(contractor only)</small></h2>
+        <input type="text" id="milestoneName" placeholder="Milestone name (e.g. Foundation Work)" /><br/>
+        <input type="text" id="milestoneDesc" placeholder="Description (detailed)" style="width:340px" /><br/>
+        <input type="number" id="milestoneAmount" placeholder="Amount in ETH (e.g. 0.5)" step="0.01" /><br/>
+        <button onclick="addMilestone()">Add Milestone</button>
+      </div>
+
+      <div class="card">
+        <h2>Mark Milestone Complete <small style="color:#888">(invoice required)</small></h2>
+        <p style="font-size:13px;color:#555;">Upload invoice — it will be hashed and stored on-chain. Milestone is marked complete in the same action.</p>
+        <input type="number" id="completeMilestoneIndex" placeholder="Milestone index (e.g. 0)" style="width:160px" /><br/>
+        <input type="file" id="completionInvoiceFile" /><br/>
+        <button class="pink" onclick="markComplete()">✔️ Submit Invoice & Mark Complete</button>
+      </div>
+
+      <div class="card">
+        <h2>Log Material Purchase <small style="color:#888">(contractor only)</small></h2>
+        <input type="number" id="matMilestoneIndex" placeholder="Milestone index (e.g. 0)" style="width:160px" /><br/>
+        <input type="text" id="matSupplier" placeholder="Supplier name" /><br/>
+        <input type="text" id="matDescription" placeholder="Material description" /><br/>
+        <input type="number" id="matCost" placeholder="Cost in ETH" step="0.001" /><br/>
+        <input type="file" id="matInvoiceFile" /><br/>
+        <button class="teal" onclick="logMaterial()">📦 Log Material Purchase</button>
+      </div>
+
+      <div class="card">
+        <h2>My Material Logs</h2>
+        <button class="blue" onclick="loadMaterialLogs()">🔄 Load Material Logs</button>
+        <div id="materialLogList" style="margin-top:10px">Click to load.</div>
+      </div>
+
+      <div class="card">
+        <h2>Raise Fund Request <small style="color:#888">(contractor only)</small></h2>
+        <p style="font-size:13px;color:#555;">Request additional budget from the authority.</p>
+        <input type="number" id="fundRequestAmount" placeholder="Amount in ETH (e.g. 0.5)" step="0.01" /><br/>
+        <textarea id="fundRequestReason" placeholder="Reason for additional funds (e.g. material cost increase)"></textarea><br/>
+        <button class="orange" onclick="createFundRequest()">📋 Submit Fund Request</button>
+      </div>
+    </div>
+
+    <!-- INSPECTOR actions -->
+    <div id="inspectorActions" style="display:none">
+      <div class="card" style="border-left: 4px solid #fb8c00;">
+        <h2>🔍 Inspector Panel</h2>
+        <div class="notice">Submit evidence first, then approve or reject your assigned milestone.</div>
+      </div>
+      <div class="card" style="border-left: 4px solid #e53935;">
+        <h2>Submit Evidence <small style="color:#888">(before approve/reject)</small></h2>
+        <input type="number" id="evidenceMilestoneIndex" placeholder="Milestone index (e.g. 0)" style="width:160px" /><br/>
+        <input type="text" id="evidenceDescription" placeholder="Description (e.g. Foundation complete, photo taken on-site)" style="width:400px" /><br/>
+        <input type="file" id="evidenceFile" /><br/>
+        <button class="red" onclick="submitEvidence()">📸 Submit Evidence</button>
+      </div>
+    </div>
+
+    <!-- REGULATOR panel -->
+    <div id="regulatorPanel" style="display:none">
+      <div class="card" style="border-left: 4px solid #283593;">
+        <h2>📋 Regulator Dashboard</h2>
+        <div class="notice" style="background:#e8eaf6;border-color:#283593;">Read-only access.</div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="blue" onclick="refreshActive()">🔄 Refresh</button>
+          <button class="blue" onclick="loadMaterialLogs()">📦 Material Logs</button>
+          <button class="blue" onclick="loadFundRequests()">📋 Fund Requests</button>
+          <button class="blue" onclick="loadAuditTrail()">🔍 Audit Trail</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Milestones</h2>
+      <div id="milestoneList">No milestones loaded yet. Click Refresh.</div>
+    </div>
+
+    <div class="card">
+      <h2>📋 Audit Trail</h2>
+      <button class="blue" onclick="loadAuditTrail()">🔍 Load Audit Trail</button>
+      <div id="auditTrail" style="margin-top:10px">Click to load.</div>
+    </div>
+
+  </div>
+
+  <div class="card">
+    <h2>Log</h2>
+    <div id="log">Waiting for actions...</div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.10.0/web3.min.js"></script>
+  <script>
+
+    const FACTORY_ADDRESS = "0xf7fbb361E52F68977D58fdeF755Bb44a30F364DE";
+    const AUTHORITY       = "0xF9551B6197481c22b443101D90761504e332ACa4";
+    const CONTRACTOR      = "0x2EaE49980FBfad44c85E416402B302591325b2bf";
+    const REGULATOR       = "0x446C8545121452D319fcE135dA8b7FB361eb96C8";
+
+    const FACTORY_ABI = [
+      { "inputs":[],"stateMutability":"nonpayable","type":"constructor" },
+      { "inputs":[
+          {"internalType":"string","name":"_name","type":"string"},
+          {"internalType":"address payable","name":"_contractor","type":"address"}],
+        "name":"createProject","outputs":[],"stateMutability":"payable","type":"function" },
+      { "inputs":[],"name":"getProjectCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
+        "stateMutability":"view","type":"function" },
+      { "inputs":[{"internalType":"uint256","name":"_index","type":"uint256"}],
+        "name":"getProject","outputs":[
+          {"internalType":"address","name":"contractAddress","type":"address"},
+          {"internalType":"string","name":"name","type":"string"},
+          {"internalType":"address","name":"contractor","type":"address"},
+          {"internalType":"uint256","name":"initialBudget","type":"uint256"}],
+        "stateMutability":"view","type":"function" }
+    ];
+
+    const PROJECT_ABI = [
+      { "inputs":[
+          {"internalType":"address","name":"_authority","type":"address"},
+          {"internalType":"address payable","name":"_contractor","type":"address"}],
+        "stateMutability":"payable","type":"constructor" },
+      { "inputs":[
+          {"internalType":"string","name":"_name","type":"string"},
+          {"internalType":"string","name":"_description","type":"string"},
+          {"internalType":"uint256","name":"_amount","type":"uint256"}],
+        "name":"addMilestone","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[{"internalType":"uint256","name":"_index","type":"uint256"}],
+        "name":"deleteMilestone","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[
+          {"internalType":"uint256","name":"_index","type":"uint256"},
+          {"internalType":"bytes32","name":"_invoiceHash","type":"bytes32"}],
+        "name":"markComplete","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[
+          {"internalType":"uint256","name":"_index","type":"uint256"},
+          {"internalType":"address","name":"_inspector","type":"address"}],
+        "name":"assignInspector","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[
+          {"internalType":"uint256","name":"_index","type":"uint256"},
+          {"internalType":"bytes32","name":"_evidenceHash","type":"bytes32"},
+          {"internalType":"string","name":"_description","type":"string"}],
+        "name":"submitEvidence","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[{"internalType":"uint256","name":"_index","type":"uint256"}],
+        "name":"approveMilestone","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[
+          {"internalType":"uint256","name":"_index","type":"uint256"},
+          {"internalType":"string","name":"_reason","type":"string"}],
+        "name":"rejectMilestone","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[{"internalType":"uint256","name":"_index","type":"uint256"}],
+        "name":"resumeMilestone","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[{"internalType":"address payable","name":"_newContractor","type":"address"}],
+        "name":"replaceContractor","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[{"internalType":"uint256","name":"_index","type":"uint256"}],
+        "name":"confirmMilestone","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[{"internalType":"uint256","name":"_index","type":"uint256"}],
+        "name":"releasePayment","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[],"name":"markProjectComplete","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[],"name":"approveProjectCompletion","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[
+          {"internalType":"uint256","name":"_amount","type":"uint256"},
+          {"internalType":"string","name":"_reason","type":"string"}],
+        "name":"createFundRequest","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[{"internalType":"uint256","name":"_requestIndex","type":"uint256"}],
+        "name":"approveFundRequest","outputs":[],"stateMutability":"payable","type":"function" },
+      { "inputs":[{"internalType":"uint256","name":"_requestIndex","type":"uint256"}],
+        "name":"rejectFundRequest","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[
+          {"internalType":"uint256","name":"_milestoneIndex","type":"uint256"},
+          {"internalType":"string","name":"_supplierName","type":"string"},
+          {"internalType":"string","name":"_materialDescription","type":"string"},
+          {"internalType":"uint256","name":"_cost","type":"uint256"},
+          {"internalType":"bytes32","name":"_invoiceHash","type":"bytes32"}],
+        "name":"logMaterial","outputs":[],"stateMutability":"nonpayable","type":"function" },
+      { "inputs":[{"internalType":"uint256","name":"_index","type":"uint256"}],
+        "name":"getMilestone","outputs":[
+          {"internalType":"string","name":"name","type":"string"},
+          {"internalType":"string","name":"description","type":"string"},
+          {"internalType":"uint256","name":"amount","type":"uint256"},
+          {"internalType":"uint8","name":"status","type":"uint8"},
+          {"internalType":"bytes32","name":"invoiceHash","type":"bytes32"},
+          {"internalType":"address","name":"milestoneInspector","type":"address"},
+          {"internalType":"bool","name":"inspectorApproved","type":"bool"},
+          {"internalType":"bool","name":"authorityConfirmed","type":"bool"},
+          {"internalType":"bytes32","name":"evidenceHash","type":"bytes32"},
+          {"internalType":"bool","name":"evidenceSubmitted","type":"bool"},
+          {"internalType":"string","name":"evidenceDescription","type":"string"},
+          {"internalType":"string","name":"rejectionReason","type":"string"}],
+        "stateMutability":"view","type":"function" },
+      { "inputs":[],"name":"getMilestoneCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
+        "stateMutability":"view","type":"function" },
+      { "inputs":[],"name":"getBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
+        "stateMutability":"view","type":"function" },
+      { "inputs":[],"name":"getBudgetSummary","outputs":[
+          {"internalType":"uint256","name":"total","type":"uint256"},
+          {"internalType":"uint256","name":"spent","type":"uint256"},
+          {"internalType":"uint256","name":"remaining","type":"uint256"}],
+        "stateMutability":"view","type":"function" },
+      { "inputs":[],"name":"contractorMarkedComplete","outputs":[{"internalType":"bool","name":"","type":"bool"}],
+        "stateMutability":"view","type":"function" },
+      { "inputs":[],"name":"projectCompleted","outputs":[{"internalType":"bool","name":"","type":"bool"}],
+        "stateMutability":"view","type":"function" },
+      { "inputs":[],"name":"authority","outputs":[{"internalType":"address","name":"","type":"address"}],
+        "stateMutability":"view","type":"function" },
+      { "inputs":[],"name":"contractor","outputs":[{"internalType":"address","name":"","type":"address"}],
+        "stateMutability":"view","type":"function" },
+      { "stateMutability":"payable","type":"receive" },
+      { "inputs":[{"internalType":"uint256","name":"_index","type":"uint256"}],
+        "name":"getFundRequest","outputs":[
+          {"internalType":"uint256","name":"amount","type":"uint256"},
+          {"internalType":"string","name":"reason","type":"string"},
+          {"internalType":"uint8","name":"status","type":"uint8"},
+          {"internalType":"uint256","name":"timestamp","type":"uint256"}],
+        "stateMutability":"view","type":"function" },
+      { "inputs":[],"name":"getFundRequestCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
+        "stateMutability":"view","type":"function" },
+      { "inputs":[],"name":"getMaterialLogCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
+        "stateMutability":"view","type":"function" },
+      { "inputs":[{"internalType":"uint256","name":"_index","type":"uint256"}],
+        "name":"getMaterialLog","outputs":[
+          {"internalType":"uint256","name":"milestoneIndex","type":"uint256"},
+          {"internalType":"string","name":"supplierName","type":"string"},
+          {"internalType":"string","name":"materialDescription","type":"string"},
+          {"internalType":"uint256","name":"cost","type":"uint256"},
+          {"internalType":"bytes32","name":"invoiceHash","type":"bytes32"},
+          {"internalType":"uint256","name":"timestamp","type":"uint256"}],
+        "stateMutability":"view","type":"function" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"sender","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"FundsReceived","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"index","type":"uint256"},{"indexed":false,"internalType":"string","name":"name","type":"string"},{"indexed":false,"internalType":"string","name":"description","type":"string"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"MilestoneAdded","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"index","type":"uint256"}],"name":"MilestoneDeleted","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"index","type":"uint256"},{"indexed":false,"internalType":"address","name":"contractor","type":"address"},{"indexed":false,"internalType":"bytes32","name":"invoiceHash","type":"bytes32"}],"name":"MilestoneMarkedComplete","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"index","type":"uint256"},{"indexed":false,"internalType":"address","name":"inspector","type":"address"}],"name":"InspectorAssigned","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"index","type":"uint256"},{"indexed":false,"internalType":"bytes32","name":"evidenceHash","type":"bytes32"},{"indexed":false,"internalType":"string","name":"description","type":"string"},{"indexed":false,"internalType":"address","name":"inspector","type":"address"}],"name":"EvidenceSubmitted","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"index","type":"uint256"},{"indexed":false,"internalType":"address","name":"inspector","type":"address"}],"name":"InspectorApproved","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"index","type":"uint256"},{"indexed":false,"internalType":"address","name":"inspector","type":"address"},{"indexed":false,"internalType":"string","name":"reason","type":"string"}],"name":"InspectorRejected","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"index","type":"uint256"}],"name":"MilestoneResumed","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"oldContractor","type":"address"},{"indexed":false,"internalType":"address","name":"newContractor","type":"address"}],"name":"ContractorReplaced","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"index","type":"uint256"},{"indexed":false,"internalType":"address","name":"authority","type":"address"}],"name":"AuthorityConfirmed","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"index","type":"uint256"},{"indexed":false,"internalType":"address","name":"approvedBy","type":"address"}],"name":"MilestoneApproved","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"index","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"PaymentReleased","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"index","type":"uint256"},{"indexed":false,"internalType":"bytes32","name":"invoiceHash","type":"bytes32"}],"name":"InvoiceSubmitted","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"requestIndex","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"string","name":"reason","type":"string"}],"name":"FundRequestCreated","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"requestIndex","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"FundRequestApproved","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"requestIndex","type":"uint256"}],"name":"FundRequestRejected","type":"event" },
+      { "anonymous":false,"inputs":[],"name":"ContractorMarkedProjectComplete","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"authority","type":"address"}],"name":"ProjectCompleted","type":"event" },
+      { "anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"logIndex","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"milestoneIndex","type":"uint256"},{"indexed":false,"internalType":"string","name":"supplierName","type":"string"},{"indexed":false,"internalType":"string","name":"materialDescription","type":"string"},{"indexed":false,"internalType":"uint256","name":"cost","type":"uint256"},{"indexed":false,"internalType":"bytes32","name":"invoiceHash","type":"bytes32"}],"name":"MaterialLogged","type":"event" }
+    ];
+
+    let web3, factoryContract, activeProjectContract;
+    let currentAccount, currentRole;
+    let activeProjectName, activeProjectAddress, activeContractorAddr;
+
+    function log(msg) {
+      document.getElementById("log").textContent = msg;
+      console.log(msg);
+    }
+
+    function statusLabel(n) {
+      return ["Pending","Complete","InReview","Approved","Paid","Rejected","Deleted"][n] || "Unknown";
+    }
+
+    function fundStatusLabel(n) {
+      return ["Pending","Approved","Rejected"][n] || "Unknown";
+    }
+
+    function hashFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const bytes = new Uint8Array(e.target.result);
+          const hex = "0x" + Array.from(bytes).map(b => b.toString(16).padStart(2,"0")).join("");
+          resolve(web3.utils.keccak256(hex));
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function detectRole(address) {
+      const lc = address.toLowerCase();
+      if (lc === AUTHORITY.toLowerCase())  return "authority";
+      if (lc === CONTRACTOR.toLowerCase()) return "contractor";
+      if (lc === REGULATOR.toLowerCase())  return "regulator";
+      return "inspector";
+    }
+
+    function updateRoleBadge(role) {
+      const labels = {
+        authority:  "🏛️ Authority — create projects, assign inspectors, confirm & release payments",
+        contractor: "🔨 Contractor — add milestones, mark complete, log materials, raise fund requests",
+        inspector:  "🔍 Inspector — submit evidence, approve or reject assigned milestones",
+        regulator:  "📋 Regulator — read-only access",
+      };
+      document.getElementById("roleBadgeWrap").innerHTML =
+        `<div class="role-badge role-${role}">${labels[role] || "❓ Unknown"}</div>`;
+    }
+
+    function updatePanelForRole(role) {
+      document.getElementById("createProjectSection").style.display = (role === "authority")  ? "block" : "none";
+      document.getElementById("authorityActions").style.display     = (role === "authority")  ? "block" : "none";
+      document.getElementById("contractorActions").style.display    = (role === "contractor") ? "block" : "none";
+      document.getElementById("inspectorActions").style.display     = (role === "inspector")  ? "block" : "none";
+      document.getElementById("regulatorPanel").style.display       = (role === "regulator")  ? "block" : "none";
+    }
+
+    async function connectWallet() {
+      if (!window.ethereum) { log("MetaMask not found!"); return; }
+      try {
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        currentAccount = accounts[0];
+        web3 = new Web3(window.ethereum);
+        factoryContract = new web3.eth.Contract(FACTORY_ABI, FACTORY_ADDRESS);
+        currentRole = detectRole(currentAccount);
+        document.getElementById("walletAddress").textContent = currentAccount;
+        updateRoleBadge(currentRole);
+        updatePanelForRole(currentRole);
+        log("Wallet connected: " + currentAccount + " (role: " + currentRole + ")");
+        await loadProjects();
+        window.ethereum.on("accountsChanged", async (accs) => {
+          currentAccount = accs[0];
+          currentRole = detectRole(currentAccount);
+          document.getElementById("walletAddress").textContent = currentAccount;
+          updateRoleBadge(currentRole);
+          updatePanelForRole(currentRole);
+          log("Switched to: " + currentAccount + " (role: " + currentRole + ")");
+          if (activeProjectContract) await loadMilestones();
+        });
+      } catch(e) { log("Connection error: " + e.message); }
+    }
+
+    async function createProject() {
+      if (!factoryContract) { log("Connect wallet first."); return; }
+      const name       = document.getElementById("projectName").value.trim();
+      const contractor = document.getElementById("projectContractor").value.trim();
+      const budget     = document.getElementById("projectBudget").value;
+      if (!name)                             { log("Enter project name."); return; }
+      if (!web3.utils.isAddress(contractor)) { log("Enter valid contractor address."); return; }
+      if (!budget || parseFloat(budget) <= 0){ log("Enter initial budget."); return; }
+      try {
+        log("Creating project: " + name + " with " + budget + " ETH budget...");
+        await factoryContract.methods.createProject(name, contractor).send({
+          from: currentAccount,
+          value: web3.utils.toWei(budget, "ether")
+        });
+        log("✅ Project created: " + name);
+        document.getElementById("projectName").value = "";
+        document.getElementById("projectContractor").value = "";
+        document.getElementById("projectBudget").value = "";
+        await loadProjects();
+      } catch(e) { log("Create project error: " + e.message); }
+    }
+
+    async function loadProjects() {
+      if (!factoryContract) { log("Connect wallet first."); return; }
+      try {
+        const count = parseInt(await factoryContract.methods.getProjectCount().call());
+        const container = document.getElementById("projectList");
+        if (count === 0) { container.innerHTML = "<p>No projects yet.</p>"; return; }
+        let html = "";
+        for (let i = 0; i < count; i++) {
+          const p = await factoryContract.methods.getProject(i).call();
+          const isActive = activeProjectAddress &&
+            p.contractAddress.toLowerCase() === activeProjectAddress.toLowerCase();
+          const budget = parseFloat(web3.utils.fromWei(p.initialBudget, "ether")).toFixed(4);
+          html += `<button class="project-btn ${isActive ? 'active' : ''}"
+                     onclick="selectProject('${p.contractAddress}','${p.name}','${p.contractor}')">
+                     📁 ${p.name}<br/>
+                     <small>Budget: ${budget} ETH | ${p.contractAddress.slice(0,16)}...</small>
+                   </button>`;
+        }
+        container.innerHTML = html;
+      } catch(e) { log("Load projects error: " + e.message); }
+    }
+
+    async function selectProject(address, name, contractor) {
+      activeProjectAddress = address;
+      activeProjectName    = name;
+      activeContractorAddr = contractor;
+      activeProjectContract = new web3.eth.Contract(PROJECT_ABI, address);
+      document.getElementById("activeProjectName").textContent    = name;
+      document.getElementById("activeProjectAddress").textContent = address;
+      document.getElementById("activeContractor").textContent     = contractor;
+      document.getElementById("activeAuthority").textContent      = AUTHORITY;
+      document.getElementById("activeProjectPanel").style.display = "block";
+      updatePanelForRole(currentRole);
+      log("Switched to project: " + name);
+      await loadProjects();
+      await refreshActive();
+    }
+
+    async function refreshActive() {
+      if (!activeProjectContract) { log("Select a project first."); return; }
+      try {
+        const balWei = await activeProjectContract.methods.getBalance().call();
+        document.getElementById("contractBalance").textContent =
+          parseFloat(web3.utils.fromWei(balWei, "ether")).toFixed(6);
+
+        const b = await activeProjectContract.methods.getBudgetSummary().call();
+        const total     = parseFloat(web3.utils.fromWei(b.total,     "ether"));
+        const spent     = parseFloat(web3.utils.fromWei(b.spent,     "ether"));
+        const remaining = parseFloat(web3.utils.fromWei(b.remaining, "ether"));
+        document.getElementById("budgetTotal").textContent     = total.toFixed(6);
+        document.getElementById("budgetSpent").textContent     = spent.toFixed(6);
+        document.getElementById("budgetRemaining").textContent = remaining.toFixed(6);
+        if (total > 0) {
+          const pct = Math.min((spent / total) * 100, 100).toFixed(1);
+          document.getElementById("budgetBar").style.width = pct + "%";
+          document.getElementById("budgetBarLabel").textContent =
+            pct + "% of budget spent (" + spent.toFixed(6) + " / " + total.toFixed(6) + " ETH)";
+        } else {
+          document.getElementById("budgetBar").style.width = "0%";
+          document.getElementById("budgetBarLabel").textContent = "No funds locked yet.";
+        }
+
+        const completed = await activeProjectContract.methods.projectCompleted().call();
+        const cmc       = await activeProjectContract.methods.contractorMarkedComplete().call();
+        document.getElementById("projectCompletedBanner").style.display    = completed ? "block" : "none";
+        document.getElementById("contractorCompletionPending").style.display = (!completed && cmc) ? "block" : "none";
+
+        await loadMilestones();
+      } catch(e) { log("Refresh error: " + e.message); }
+    }
+
+    async function loadMilestones() {
+      if (!activeProjectContract) return;
+      const count = parseInt(await activeProjectContract.methods.getMilestoneCount().call());
+      const container = document.getElementById("milestoneList");
+      if (count === 0) { container.innerHTML = "<p>No milestones yet.</p>"; return; }
+
+      // Check project completion status for contractor actions
+      const projectCompleted = await activeProjectContract.methods.projectCompleted().call();
+      const cmc = await activeProjectContract.methods.contractorMarkedComplete().call();
+
+      let html = "";
+      let allPaidOrDeleted = true;
+
+      for (let i = 0; i < count; i++) {
+        const m = await activeProjectContract.methods.getMilestone(i).call();
+        const statusText   = statusLabel(parseInt(m.status));
+        const ethAmount    = parseFloat(web3.utils.fromWei(m.amount, "ether")).toFixed(6);
+        const hasInvoice   = m.invoiceHash &&
+          m.invoiceHash !== "0x0000000000000000000000000000000000000000000000000000000000000000";
+        const hasInspector = m.milestoneInspector &&
+          m.milestoneInspector !== "0x0000000000000000000000000000000000000000";
+        const isMyMilestone = hasInspector &&
+          m.milestoneInspector.toLowerCase() === currentAccount.toLowerCase();
+
+        if (statusText !== "Paid" && statusText !== "Deleted") allPaidOrDeleted = false;
+
+        if (statusText === "Deleted") {
+          html += `<div class="card" style="background:#f5f5f5;opacity:0.6">
+            <strong>#${i} — ${m.name}</strong>
+            <span class="status-Deleted"> [DELETED]</span>
+          </div>`;
+          continue;
+        }
+
+        html += `<div class="card" style="background:#fafafa">
+          <strong>#${i} — ${m.name}</strong><br/>
+          <em style="font-size:13px;color:#666">${m.description}</em><br/>
+          Amount: ${ethAmount} ETH &nbsp;|&nbsp;
+          Status: <span class="status-${statusText}">${statusText}</span><br/>`;
+
+        // Inspector info
+        if (hasInspector) {
+          html += `<div style="font-size:12px;color:#555;margin:4px 0;">
+            🔍 Inspector: ${m.milestoneInspector.slice(0,20)}...
+            ${isMyMilestone ? '<strong style="color:#fb8c00">(You)</strong>' : ''}
+          </div>`;
+        } else {
+          html += `<div style="font-size:12px;color:#aaa;margin:4px 0;">🔍 No inspector assigned yet</div>`;
+        }
+
+        // Sig badges
+        html += `<div style="margin:6px 0;">
+          <span class="sig-status ${m.evidenceSubmitted ? 'sig-done' : 'sig-pending'}">
+            📸 Evidence: ${m.evidenceSubmitted ? '✔' : 'Pending'}
+          </span>
+          <span class="sig-status ${m.inspectorApproved ? 'sig-done' : (statusText === 'Rejected' ? 'sig-rejected' : 'sig-pending')}">
+            🔍 Inspector: ${m.inspectorApproved ? '✔ Approved' : (statusText === 'Rejected' ? '✖ Rejected' : 'Pending')}
+          </span>
+          <span class="sig-status ${m.authorityConfirmed ? 'sig-done' : 'sig-pending'}">
+            🏛️ Authority: ${m.authorityConfirmed ? '✔ Confirmed' : 'Pending'}
+          </span>
+        </div>`;
+
+        // Evidence box
+        if (m.evidenceSubmitted) {
+          html += `<div class="evidence-box">
+            📸 <strong>Evidence:</strong> ${m.evidenceDescription}<br/>
+            <span style="font-size:11px;color:#888;word-break:break-all;">Hash: ${m.evidenceHash}</span>
+          </div>`;
+        }
+
+        // Rejection reason
+        if (statusText === "Rejected" && m.rejectionReason) {
+          html += `<div class="rejection-box">
+            ❌ <strong>Rejection reason:</strong> ${m.rejectionReason}
+          </div>`;
+        }
+
+        // Invoice
+        html += hasInvoice
+          ? `<div class="hash-display">📄 Invoice Hash: ${m.invoiceHash}</div>`
+          : `<div class="hash-display" style="color:#aaa;">No invoice yet.</div>`;
+
+        html += `<br/>`;
+
+        // --- CONTRACTOR ---
+        if (currentRole === "contractor") {
+          if (statusText === "Pending")
+            html += `<button class="gray" onclick="deleteMilestone(${i})">🗑️ Delete</button>`;
+          if (statusText === "Rejected")
+            html += `<em style="color:#e53935;font-size:13px">⏳ Awaiting authority decision (resume or replace contractor)</em>`;
+          if (statusText === "Complete")
+            html += `<em style="color:#8e24aa;font-size:13px">⏳ Waiting for authority to assign inspector</em>`;
+          if (statusText === "InReview")
+            html += `<em style="color:#888;font-size:13px">⏳ Inspector reviewing</em>`;
+          if (statusText === "Approved")
+            html += `<em style="color:#1e88e5;font-size:13px">✅ Approved — payment releasing soon</em>`;
+        }
+
+        // --- AUTHORITY ---
+        if (currentRole === "authority") {
+          if (statusText === "Pending")
+            html += `<em style="color:#888;font-size:13px">⏳ Waiting for contractor</em>`;
+          if (statusText === "Complete") {
+            html += `<br/><input type="text" id="inspectorInput_${i}" placeholder="Inspector wallet (0x...)" style="width:320px"/>`;
+            html += `<button class="orange" onclick="assignInspector(${i})">🔍 Assign Inspector</button>`;
+          }
+          if (statusText === "Rejected") {
+            html += `<button class="blue" onclick="resumeMilestone(${i})">🔄 Resume Work</button>`;
+            html += `<em style="color:#888;font-size:13px"> or use "Replace Contractor" below</em>`;
+          }
+          if (statusText === "InReview" && m.inspectorApproved)
+            html += `<button class="indigo" onclick="confirmMilestone(${i})">🏛️ Authority Confirm</button>`;
+          if (statusText === "InReview" && !m.inspectorApproved)
+            html += `<em style="color:#888;font-size:13px">⏳ Waiting for inspector</em>`;
+          if (statusText === "Approved")
+            html += `<button onclick="releasePayment(${i})">💸 Release Payment</button>`;
+        }
+
+        // --- INSPECTOR ---
+        if (currentRole === "inspector" && isMyMilestone) {
+          if (statusText === "InReview" && !m.evidenceSubmitted)
+            html += `<div class="notice" style="background:#fce4ec;border-color:#e53935;">⚠️ Submit evidence above before approving or rejecting.</div>`;
+          if (statusText === "InReview" && m.evidenceSubmitted && !m.inspectorApproved) {
+            html += `<button class="orange" onclick="approveMilestone(${i})">✅ Approve</button>`;
+            html += `<button class="red" onclick="promptReject(${i})">❌ Reject</button>`;
+          }
+          if (statusText === "InReview" && m.inspectorApproved)
+            html += `<em style="color:#888;font-size:13px">⏳ Waiting for authority confirmation</em>`;
+        }
+
+        if (statusText === "Paid")
+          html += `<em style="color:#2e7d32">✅ Payment sent to contractor.</em>`;
+
+        html += `</div>`;
+      }
+
+      // Project completion buttons
+      if (!projectCompleted) {
+        if (currentRole === "contractor" && allPaidOrDeleted && count > 0 && !cmc) {
+          html += `<div class="card" style="border: 2px solid #00897b;">
+            <h2>🏁 Mark Project Complete</h2>
+            <p style="font-size:13px;color:#555;">All milestones are paid or deleted. You can now request project completion.</p>
+            <button class="teal" onclick="markProjectComplete()">🏁 Mark Project as Complete</button>
+          </div>`;
+        }
+        if (currentRole === "authority" && cmc) {
+          html += `<div class="card" style="border: 2px solid #00897b;">
+            <h2>🏁 Final Project Approval</h2>
+            <p style="font-size:13px;color:#555;">Contractor has marked this project complete. Give final approval to close it.</p>
+            <button class="teal" onclick="approveProjectCompletion()">✅ Approve Project Completion</button>
+          </div>`;
+        }
+      }
+
+      container.innerHTML = html;
+    }
+
+function promptReject(index) {
+  rejectMilestone(index, "Rejected by inspector");
+}
+    async function addMilestone() {
+      if (!activeProjectContract) { log("Select a project first."); return; }
+      const name = document.getElementById("milestoneName").value.trim();
+      const desc = document.getElementById("milestoneDesc").value.trim();
+      const eth  = document.getElementById("milestoneAmount").value;
+      if (!name) { log("Enter milestone name."); return; }
+      if (!desc) { log("Enter milestone description."); return; }
+      if (!eth || parseFloat(eth) <= 0) { log("Enter valid amount."); return; }
+      try {
+        log("Adding milestone: " + name + "...");
+        await activeProjectContract.methods
+          .addMilestone(name, desc, web3.utils.toWei(eth, "ether"))
+          .send({ from: currentAccount });
+        log("✅ Milestone added: " + name);
+        document.getElementById("milestoneName").value = "";
+        document.getElementById("milestoneDesc").value = "";
+        document.getElementById("milestoneAmount").value = "";
+        await refreshActive();
+      } catch(e) { log("Add milestone error: " + e.message); }
+    }
+
+    async function deleteMilestone(index) {
+      if (!confirm("Delete milestone #" + index + "? This cannot be undone.")) return;
+      try {
+        log("Deleting milestone #" + index + "...");
+        await activeProjectContract.methods.deleteMilestone(index).send({ from: currentAccount });
+        log("✅ Milestone #" + index + " deleted.");
+        await refreshActive();
+      } catch(e) { log("Delete error: " + e.message); }
+    }
+
+    async function markComplete() {
+      if (!activeProjectContract) { log("Select a project first."); return; }
+      const index = document.getElementById("completeMilestoneIndex").value;
+      const file  = document.getElementById("completionInvoiceFile").files[0];
+      if (index === "" || index < 0) { log("Enter valid milestone index."); return; }
+      if (!file) { log("Please select your invoice file."); return; }
+      try {
+        log("Hashing invoice: " + file.name + "...");
+        const hash = await hashFile(file);
+        log("Submitting invoice + marking complete...");
+        await activeProjectContract.methods
+          .markComplete(parseInt(index), hash)
+          .send({ from: currentAccount });
+        log("✅ Milestone #" + index + " marked complete with invoice hash: " + hash);
+        document.getElementById("completeMilestoneIndex").value = "";
+        document.getElementById("completionInvoiceFile").value = "";
+        await refreshActive();
+      } catch(e) { log("Mark complete error: " + e.message); }
+    }
+
+    async function assignInspector(index) {
+      const addr = document.getElementById("inspectorInput_" + index).value.trim();
+      if (!web3.utils.isAddress(addr)) { log("Enter valid inspector address."); return; }
+      try {
+        log("Assigning inspector to milestone #" + index + "...");
+        await activeProjectContract.methods.assignInspector(index, addr).send({ from: currentAccount });
+        log("✅ Inspector assigned to milestone #" + index + ": " + addr);
+        await refreshActive();
+      } catch(e) { log("Assign inspector error: " + e.message); }
+    }
+
+    async function submitEvidence() {
+      if (!activeProjectContract) { log("Select a project first."); return; }
+      const index = document.getElementById("evidenceMilestoneIndex").value;
+      const desc  = document.getElementById("evidenceDescription").value.trim();
+      const file  = document.getElementById("evidenceFile").files[0];
+      if (index === "" || index < 0) { log("Enter valid milestone index."); return; }
+      if (!desc) { log("Enter evidence description."); return; }
+      if (!file) { log("Select evidence file."); return; }
+      try {
+        log("Hashing evidence: " + file.name + "...");
+        const hash = await hashFile(file);
+        await activeProjectContract.methods
+          .submitEvidence(parseInt(index), hash, desc)
+          .send({ from: currentAccount });
+        log("✅ Evidence submitted for milestone #" + index + "!\nDesc: " + desc + "\nHash: " + hash);
+        document.getElementById("evidenceMilestoneIndex").value = "";
+        document.getElementById("evidenceDescription").value = "";
+        document.getElementById("evidenceFile").value = "";
+        await refreshActive();
+      } catch(e) { log("Evidence error: " + e.message); }
+    }
+
+    async function approveMilestone(index) {
+      try {
+        log("Approving milestone #" + index + "...");
+        await activeProjectContract.methods.approveMilestone(index).send({ from: currentAccount });
+        log("✅ Milestone #" + index + " approved by inspector.");
+        await refreshActive();
+      } catch(e) { log("Approve error: " + e.message); }
+    }
+
+    async function rejectMilestone(index, reason) {
+      try {
+        log("Rejecting milestone #" + index + "...");
+        await activeProjectContract.methods.rejectMilestone(index, reason).send({ from: currentAccount });
+        log("❌ Milestone #" + index + " rejected. Reason: " + reason);
+        await refreshActive();
+      } catch(e) { log("Reject error: " + e.message); }
+    }
+
+    async function resumeMilestone(index) {
+      try {
+        log("Resuming milestone #" + index + "...");
+        await activeProjectContract.methods.resumeMilestone(index).send({ from: currentAccount });
+        log("✅ Milestone #" + index + " resumed. Contractor can redo work.");
+        await refreshActive();
+      } catch(e) { log("Resume error: " + e.message); }
+    }
+
+    async function replaceContractor() {
+      const addr = document.getElementById("newContractorAddr").value.trim();
+      if (!web3.utils.isAddress(addr)) { log("Enter valid contractor address."); return; }
+      if (!confirm("Replace contractor with " + addr + "?")) return;
+      try {
+        log("Replacing contractor...");
+        await activeProjectContract.methods.replaceContractor(addr).send({ from: currentAccount });
+        log("✅ Contractor replaced with: " + addr);
+        document.getElementById("newContractorAddr").value = "";
+        document.getElementById("activeContractor").textContent = addr;
+        await refreshActive();
+      } catch(e) { log("Replace contractor error: " + e.message); }
+    }
+
+    async function confirmMilestone(index) {
+      try {
+        log("Confirming milestone #" + index + "...");
+        await activeProjectContract.methods.confirmMilestone(index).send({ from: currentAccount });
+        log("✅ Milestone #" + index + " confirmed.");
+        await refreshActive();
+      } catch(e) { log("Confirm error: " + e.message); }
+    }
+
+    async function releasePayment(index) {
+      try {
+        log("Releasing payment for milestone #" + index + "...");
+        await activeProjectContract.methods.releasePayment(index).send({ from: currentAccount });
+        log("✅ Payment released for milestone #" + index + "!");
+        await refreshActive();
+      } catch(e) { log("Release error: " + e.message); }
+    }
+
+    async function markProjectComplete() {
+      try {
+        log("Marking project as complete...");
+        await activeProjectContract.methods.markProjectComplete().send({ from: currentAccount });
+        log("✅ Project marked complete by contractor. Awaiting authority final approval.");
+        await refreshActive();
+      } catch(e) { log("Mark project complete error: " + e.message); }
+    }
+
+    async function approveProjectCompletion() {
+      try {
+        log("Approving project completion...");
+        await activeProjectContract.methods.approveProjectCompletion().send({ from: currentAccount });
+        log("🎉 Project officially completed!");
+        await refreshActive();
+      } catch(e) { log("Approve completion error: " + e.message); }
+    }
+
+    async function createFundRequest() {
+      if (!activeProjectContract) { log("Select a project first."); return; }
+      const amount = document.getElementById("fundRequestAmount").value;
+      const reason = document.getElementById("fundRequestReason").value.trim();
+      if (!amount || parseFloat(amount) <= 0) { log("Enter valid amount."); return; }
+      if (!reason) { log("Enter reason for fund request."); return; }
+      try {
+        log("Submitting fund request...");
+        await activeProjectContract.methods
+          .createFundRequest(web3.utils.toWei(amount, "ether"), reason)
+          .send({ from: currentAccount });
+        log("✅ Fund request submitted: " + amount + " ETH — " + reason);
+        document.getElementById("fundRequestAmount").value = "";
+        document.getElementById("fundRequestReason").value = "";
+        await loadFundRequests();
+      } catch(e) { log("Fund request error: " + e.message); }
+    }
+
+    async function loadFundRequests() {
+      if (!activeProjectContract) { log("Select a project first."); return; }
+      try {
+        const count = parseInt(await activeProjectContract.methods.getFundRequestCount().call());
+        const container = document.getElementById("fundRequestList");
+        if (count === 0) { container.innerHTML = "<p>No fund requests yet.</p>"; return; }
+        let html = "";
+        for (let i = 0; i < count; i++) {
+          const r = await activeProjectContract.methods.getFundRequest(i).call();
+          const eth    = parseFloat(web3.utils.fromWei(r.amount, "ether")).toFixed(6);
+          const status = fundStatusLabel(parseInt(r.status));
+          const date   = new Date(parseInt(r.timestamp) * 1000).toLocaleString();
+          const colors = { Pending: "#fff8e1", Approved: "#e8f5e9", Rejected: "#fce4ec" };
+          html += `<div class="card" style="background:${colors[status] || '#fff'};margin:6px 0">
+            <strong>📋 Request #${i}</strong> — ${eth} ETH<br/>
+            <strong>Reason:</strong> ${r.reason}<br/>
+            <strong>Status:</strong> <span class="status-${status === 'Pending' ? 'Pending' : (status === 'Approved' ? 'Approved' : 'Rejected')}">${status}</span><br/>
+            <strong>Date:</strong> ${date}<br/>`;
+          if (status === "Pending" && currentRole === "authority") {
+            html += `<button onclick="approveFundRequest(${i}, '${eth}')" style="margin-top:6px">✅ Approve (+${eth} ETH)</button>`;
+            html += `<button class="red" onclick="rejectFundRequest(${i})" style="margin-top:6px">❌ Reject</button>`;
+          }
+          html += `</div>`;
+        }
+        container.innerHTML = html;
+      } catch(e) { log("Load fund requests error: " + e.message); }
+    }
+
+    async function approveFundRequest(index, ethAmount) {
+      try {
+        log("Approving fund request #" + index + " — sending " + ethAmount + " ETH...");
+        await activeProjectContract.methods.approveFundRequest(index).send({
+          from: currentAccount,
+          value: web3.utils.toWei(ethAmount, "ether")
+        });
+        log("✅ Fund request #" + index + " approved. " + ethAmount + " ETH added to project.");
+        await loadFundRequests();
+        await refreshActive();
+      } catch(e) { log("Approve fund request error: " + e.message); }
+    }
+
+    async function rejectFundRequest(index) {
+      try {
+        log("Rejecting fund request #" + index + "...");
+        await activeProjectContract.methods.rejectFundRequest(index).send({ from: currentAccount });
+        log("❌ Fund request #" + index + " rejected.");
+        await loadFundRequests();
+      } catch(e) { log("Reject fund request error: " + e.message); }
+    }
+
+    async function logMaterial() {
+      if (!activeProjectContract) { log("Select a project first."); return; }
+      const milestoneIndex = document.getElementById("matMilestoneIndex").value;
+      const supplier       = document.getElementById("matSupplier").value.trim();
+      const description    = document.getElementById("matDescription").value.trim();
+      const costEth        = document.getElementById("matCost").value;
+      const file           = document.getElementById("matInvoiceFile").files[0];
+      if (milestoneIndex === "" || milestoneIndex < 0) { log("Enter valid milestone index."); return; }
+      if (!supplier)    { log("Enter supplier name."); return; }
+      if (!description) { log("Enter material description."); return; }
+      if (!costEth || parseFloat(costEth) <= 0) { log("Enter valid cost."); return; }
+      try {
+        let invoiceHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
+        if (file) {
+          log("Hashing invoice: " + file.name + "...");
+          invoiceHash = await hashFile(file);
+        }
+        await activeProjectContract.methods
+          .logMaterial(parseInt(milestoneIndex), supplier, description,
+            web3.utils.toWei(costEth, "ether"), invoiceHash)
+          .send({ from: currentAccount });
+        log("✅ Material logged!\nSupplier: " + supplier + "\nMaterial: " + description + "\nCost: " + costEth + " ETH");
+        document.getElementById("matSupplier").value = "";
+        document.getElementById("matDescription").value = "";
+        document.getElementById("matCost").value = "";
+        document.getElementById("matMilestoneIndex").value = "";
+        await loadMaterialLogs();
+      } catch(e) { log("Log material error: " + e.message); }
+    }
+
+    async function loadMaterialLogs() {
+      if (!activeProjectContract) { log("Select a project first."); return; }
+      try {
+        const count = parseInt(await activeProjectContract.methods.getMaterialLogCount().call());
+        const container = document.getElementById("materialLogList");
+        if (count === 0) { container.innerHTML = "<p>No material logs yet.</p>"; return; }
+        let html = "";
+        for (let i = 0; i < count; i++) {
+          const l = await activeProjectContract.methods.getMaterialLog(i).call();
+          const costEth = parseFloat(web3.utils.fromWei(l.cost, "ether")).toFixed(6);
+          const date    = new Date(parseInt(l.timestamp) * 1000).toLocaleString();
+          const hasHash = l.invoiceHash &&
+            l.invoiceHash !== "0x0000000000000000000000000000000000000000000000000000000000000000";
+          html += `<div class="card" style="background:#f9fbe7;margin:6px 0">
+            <strong>📦 Log #${i} — Milestone #${l.milestoneIndex}</strong><br/>
+            <strong>Supplier:</strong> ${l.supplierName}<br/>
+            <strong>Material:</strong> ${l.materialDescription}<br/>
+            <strong>Cost:</strong> ${costEth} ETH | <strong>Date:</strong> ${date}<br/>
+            ${hasHash
+              ? `<div class="hash-display">🧾 Hash: ${l.invoiceHash}</div>`
+              : `<div class="hash-display" style="color:#aaa">No invoice attached.</div>`}
+          </div>`;
+        }
+        container.innerHTML = html;
+      } catch(e) { log("Load material logs error: " + e.message); }
+    }
+
+    async function loadAuditTrail() {
+      if (!activeProjectContract) { log("Select a project first."); return; }
+      const container = document.getElementById("auditTrail");
+      container.innerHTML = "<p style='color:#888'>Loading...</p>";
+      try {
+        const [
+          fundsEvents, addedEvents, deletedEvents, completeEvents,
+          assignedEvents, evidenceEvents, inspectorApprEvents,
+          rejectEvents, resumeEvents, replaceEvents,
+          authEvents, approvedEvents, paymentEvents,
+          invoiceEvents, fundReqEvents, fundApprEvents, fundRejEvents,
+          cmpltEvents, projApprEvents, materialEvents
+        ] = await Promise.all([
+          activeProjectContract.getPastEvents("FundsReceived",                { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("MilestoneAdded",               { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("MilestoneDeleted",             { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("MilestoneMarkedComplete",      { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("InspectorAssigned",            { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("EvidenceSubmitted",            { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("InspectorApproved",            { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("InspectorRejected",            { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("MilestoneResumed",             { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("ContractorReplaced",           { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("AuthorityConfirmed",           { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("MilestoneApproved",            { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("PaymentReleased",              { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("InvoiceSubmitted",             { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("FundRequestCreated",           { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("FundRequestApproved",          { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("FundRequestRejected",          { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("ContractorMarkedProjectComplete",{ fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("ProjectCompleted",             { fromBlock: 0, toBlock: "latest" }),
+          activeProjectContract.getPastEvents("MaterialLogged",               { fromBlock: 0, toBlock: "latest" })
+        ]);
+
+        const allEvents = [
+          ...fundsEvents.map(e => ({ block: e.blockNumber, icon: "💰", color: "#e8f5e9",
+            text: `Funds received: ${parseFloat(web3.utils.fromWei(e.returnValues.amount,"ether")).toFixed(6)} ETH` })),
+          ...addedEvents.map(e => ({ block: e.blockNumber, icon: "➕", color: "#e3f2fd",
+            text: `Milestone #${e.returnValues.index} added: "${e.returnValues.name}" — ${parseFloat(web3.utils.fromWei(e.returnValues.amount,"ether")).toFixed(6)} ETH` })),
+          ...deletedEvents.map(e => ({ block: e.blockNumber, icon: "🗑️", color: "#f5f5f5",
+            text: `Milestone #${e.returnValues.index} deleted by contractor` })),
+          ...completeEvents.map(e => ({ block: e.blockNumber, icon: "✔️", color: "#f3e5f5",
+            text: `Milestone #${e.returnValues.index} marked complete with invoice by contractor` })),
+          ...assignedEvents.map(e => ({ block: e.blockNumber, icon: "🔍", color: "#fff3e0",
+            text: `Inspector ${e.returnValues.inspector.slice(0,16)}... assigned to milestone #${e.returnValues.index}` })),
+          ...evidenceEvents.map(e => ({ block: e.blockNumber, icon: "📸", color: "#fff8e1",
+            text: `Evidence submitted for milestone #${e.returnValues.index}: "${e.returnValues.description}"` })),
+          ...inspectorApprEvents.map(e => ({ block: e.blockNumber, icon: "✅", color: "#e8f5e9",
+            text: `Milestone #${e.returnValues.index} approved by inspector` })),
+          ...rejectEvents.map(e => ({ block: e.blockNumber, icon: "❌", color: "#fce4ec",
+            text: `Milestone #${e.returnValues.index} rejected by inspector. Reason: "${e.returnValues.reason}"` })),
+          ...resumeEvents.map(e => ({ block: e.blockNumber, icon: "🔄", color: "#e3f2fd",
+            text: `Milestone #${e.returnValues.index} resumed by authority — contractor to redo work` })),
+          ...replaceEvents.map(e => ({ block: e.blockNumber, icon: "🔁", color: "#fce4ec",
+            text: `Contractor replaced: ${e.returnValues.oldContractor.slice(0,14)}... → ${e.returnValues.newContractor.slice(0,14)}...` })),
+          ...authEvents.map(e => ({ block: e.blockNumber, icon: "🏛️", color: "#e8eaf6",
+            text: `Milestone #${e.returnValues.index} confirmed by authority` })),
+          ...approvedEvents.map(e => ({ block: e.blockNumber, icon: "🎯", color: "#e0f2f1",
+            text: `Milestone #${e.returnValues.index} fully approved` })),
+          ...paymentEvents.map(e => ({ block: e.blockNumber, icon: "💸", color: "#fce4ec",
+            text: `Payment released for milestone #${e.returnValues.index}: ${parseFloat(web3.utils.fromWei(e.returnValues.amount,"ether")).toFixed(6)} ETH` })),
+          ...fundReqEvents.map(e => ({ block: e.blockNumber, icon: "📋", color: "#fff8e1",
+            text: `Fund request #${e.returnValues.requestIndex} raised: ${parseFloat(web3.utils.fromWei(e.returnValues.amount,"ether")).toFixed(6)} ETH — "${e.returnValues.reason}"` })),
+          ...fundApprEvents.map(e => ({ block: e.blockNumber, icon: "💵", color: "#e8f5e9",
+            text: `Fund request #${e.returnValues.requestIndex} approved: ${parseFloat(web3.utils.fromWei(e.returnValues.amount,"ether")).toFixed(6)} ETH added` })),
+          ...fundRejEvents.map(e => ({ block: e.blockNumber, icon: "🚫", color: "#fce4ec",
+            text: `Fund request #${e.returnValues.requestIndex} rejected by authority` })),
+          ...cmpltEvents.map(e => ({ block: e.blockNumber, icon: "🏁", color: "#e0f2f1",
+            text: `Contractor marked project complete — awaiting authority approval` })),
+          ...projApprEvents.map(e => ({ block: e.blockNumber, icon: "🎉", color: "#e8f5e9",
+            text: `Project officially completed by authority` })),
+          ...materialEvents.map(e => ({ block: e.blockNumber, icon: "📦", color: "#f9fbe7",
+            text: `Material logged for milestone #${e.returnValues.milestoneIndex}: "${e.returnValues.materialDescription}" from ${e.returnValues.supplierName} — ${parseFloat(web3.utils.fromWei(e.returnValues.cost,"ether")).toFixed(6)} ETH` }))
+        ];
+
+        if (allEvents.length === 0) { container.innerHTML = "<p>No events yet.</p>"; return; }
+        allEvents.sort((a, b) => a.block - b.block);
+        let html = `<p style="font-size:13px;color:#888;">${allEvents.length} event(s) — sorted by block.</p>`;
+        allEvents.forEach(e => {
+          html += `<div style="background:${e.color};padding:10px;border-radius:6px;margin:4px 0;font-size:13px;">
+            <strong>${e.icon} Block #${e.block}</strong> &nbsp;|&nbsp; ${e.text}
+          </div>`;
+        });
+        container.innerHTML = html;
+        log("✅ Audit trail loaded — " + allEvents.length + " events.");
+      } catch(e) { log("Audit trail error: " + e.message); container.innerHTML = "<p style='color:red'>Error.</p>"; }
+    }
+
+  </script>
+</body>
+</html>
