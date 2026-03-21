@@ -11,12 +11,12 @@ contract ProjectFactory {
         address contractAddress;
         string name;
         address contractor;
-        address inspector;
+        uint256 initialBudget;
     }
 
     ProjectInfo[] public projects;
 
-    event ProjectCreated(uint256 index, address contractAddress, string name, address contractor, address inspector);
+    event ProjectCreated(uint256 index, address contractAddress, string name, address contractor, uint256 budget);
 
     modifier onlyAuthority() {
         require(msg.sender == authority, "Only authority can call this");
@@ -27,19 +27,21 @@ contract ProjectFactory {
         authority = msg.sender;
     }
 
+    // Authority creates project AND sends initial budget in same transaction
     function createProject(
         string memory _name,
-        address payable _contractor,
-        address _inspector
-    ) external onlyAuthority {
-        Project newProject = new Project(msg.sender, _contractor, _inspector);
+        address payable _contractor
+    ) external payable onlyAuthority {
+        require(_contractor != address(0), "Invalid contractor");
+        require(msg.value > 0, "Initial budget required");
+        Project newProject = new Project{value: msg.value}(msg.sender, _contractor);
         projects.push(ProjectInfo({
             contractAddress: address(newProject),
             name: _name,
             contractor: _contractor,
-            inspector: _inspector
+            initialBudget: msg.value
         }));
-        emit ProjectCreated(projects.length - 1, address(newProject), _name, _contractor, _inspector);
+        emit ProjectCreated(projects.length - 1, address(newProject), _name, _contractor, msg.value);
     }
 
     function getProjectCount() external view returns (uint256) {
@@ -50,10 +52,10 @@ contract ProjectFactory {
         address contractAddress,
         string memory name,
         address contractor,
-        address inspector
+        uint256 initialBudget
     ) {
         require(_index < projects.length, "Invalid index");
         ProjectInfo storage p = projects[_index];
-        return (p.contractAddress, p.name, p.contractor, p.inspector);
+        return (p.contractAddress, p.name, p.contractor, p.initialBudget);
     }
 }
