@@ -11,11 +11,12 @@ contract ProjectFactory {
         address contractAddress;
         string name;
         address contractor;
+        address inspector;
     }
 
     ProjectInfo[] public projects;
 
-    event ProjectCreated(uint256 index, address contractAddress, string name, address contractor);
+    event ProjectCreated(uint256 index, address contractAddress, string name, address contractor, address inspector);
 
     modifier onlyAuthority() {
         require(msg.sender == authority, "Only authority can call this");
@@ -26,15 +27,19 @@ contract ProjectFactory {
         authority = msg.sender;
     }
 
-    function createProject(string memory _name, address payable _contractor) external onlyAuthority {
-        // ← pass msg.sender as authority so YOUR wallet controls the project
-        Project newProject = new Project(msg.sender, _contractor);
+    function createProject(
+        string memory _name,
+        address payable _contractor,
+        address _inspector
+    ) external onlyAuthority {
+        Project newProject = new Project(msg.sender, _contractor, _inspector);
         projects.push(ProjectInfo({
             contractAddress: address(newProject),
             name: _name,
-            contractor: _contractor
+            contractor: _contractor,
+            inspector: _inspector
         }));
-        emit ProjectCreated(projects.length - 1, address(newProject), _name, _contractor);
+        emit ProjectCreated(projects.length - 1, address(newProject), _name, _contractor, _inspector);
     }
 
     function getProjectCount() external view returns (uint256) {
@@ -44,10 +49,11 @@ contract ProjectFactory {
     function getProject(uint256 _index) external view returns (
         address contractAddress,
         string memory name,
-        address contractor
+        address contractor,
+        address inspector
     ) {
         require(_index < projects.length, "Invalid index");
         ProjectInfo storage p = projects[_index];
-        return (p.contractAddress, p.name, p.contractor);
+        return (p.contractAddress, p.name, p.contractor, p.inspector);
     }
 }
